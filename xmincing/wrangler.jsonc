@@ -1,0 +1,27 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "xmincing",
+	"main": ".svelte-kit/cloudflare/_worker.js",
+	"compatibility_date": "2026-11-13",
+	"assets": {
+		"binding": "ASSETS",
+		"directory": ".svelte-kit/cloudflare"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "xmincing-db",
+			"database_id": "e6441ce0-bfb0-4f12-94ad-0f5e7244a157",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "xmincing-media"
+		}
+	],
+	"triggers": { "crons": ["0 4 * * *"] },
+	"observability": { "enabled": true },
+	"upload_source_maps": false
+}

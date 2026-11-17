@@ -1,0 +1,11 @@
+<svelte:head><title>About · Our Trailer, Our Rules</title></svelte:head>
+<section class="page">
+	<p class="eyebrow">The idea</p><h1>Make a little film<br /><em>with your person.</em></h1>
+	<p class="lead">Our Trailer, Our Rules is a two-person prompt game. You and someone you choose get different filming prompts, record three short moments each, and reveal the six clips together.</p>
+	<div class="steps"><article><span>01</span><h2>Two private prompt sets</h2><p>You see your three prompts. Your partner sees theirs. The other set stays hidden until the reveal.</p></article><article><span>02</span><h2>Real life, lightly directed</h2><p>Use your phone camera or choose a video. Keep each clip to 20 seconds. No synthetic footage is generated.</p></article><article><span>03</span><h2>Your reveal belongs to you</h2><p>The room is private. A public link only appears after both people approve; either person can revoke it later.</p></article></div>
+	<p class="note">This first version makes a watchable sequence of your six clips. It does not yet export a polished edited video file.</p>
+	<a class="button" href="/signup">Make something together ↗</a>
+</section>
+<style>
+	.page { padding: 56px 0 80px; } .eyebrow { color: #d61f68; text-transform: uppercase; letter-spacing: .14em; font-size: 11px; font-weight: 800; } h1 { font: 700 clamp(44px,7vw,76px)/.97 'Bricolage Grotesque',system-ui,sans-serif; letter-spacing: -.06em; margin: 0 0 24px; } h1 em { color: #d61f68; font-style: normal; } .lead { max-width: 680px; color: #645d59; font-size: 18px; line-height: 1.65; } .steps { margin: 48px 0 28px; display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; } article { border: 1px solid #ded5c6; background: #fffaf2; border-radius: 14px; padding: 23px; } article span { color: #d61f68; font: 22px Georgia,serif; } article h2 { margin: 22px 0 10px; font: 700 22px 'Bricolage Grotesque',system-ui,sans-serif; letter-spacing: -.03em; } article p,.note { color: #716a66; font-size: 13px; line-height: 1.65; } .note { margin-bottom: 26px; } .button { display: inline-flex; padding: 15px 22px; border-radius: 999px; background: #272526; color: white; font-weight: 700; text-decoration: none; } @media(max-width:700px){ .steps{grid-template-columns:1fr;} }
+</style>

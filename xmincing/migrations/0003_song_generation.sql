@@ -1,0 +1,10 @@
+ALTER TABLE song_rooms ADD COLUMN lyrics TEXT;
+ALTER TABLE song_rooms ADD COLUMN music_prompt TEXT;
+ALTER TABLE song_rooms ADD COLUMN image_prompt TEXT;
+ALTER TABLE song_rooms ADD COLUMN checkout_id TEXT;
+ALTER TABLE song_rooms ADD COLUMN payment_status TEXT NOT NULL DEFAULT 'unpaid';
+ALTER TABLE song_rooms ADD COLUMN generation_status TEXT NOT NULL DEFAULT 'not_started';
+ALTER TABLE song_rooms ADD COLUMN generation_error TEXT;
+ALTER TABLE song_rooms ADD COLUMN song_key TEXT;
+ALTER TABLE song_rooms ADD COLUMN image_key TEXT;
+ALTER TABLE song_rooms ADD COLUMN generation_started_at INTEGER;
