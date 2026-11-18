@@ -71,8 +71,8 @@ export async function lyricPdf(room, cover, mime) {
 			y -= size + 9;
 		}
 	}
-	write('LYRIC DRAFT AND CREDITS', 11, bold);
-	write(room.lyrics.split('\n')[0], 26, bold);
+	write('LYRIA LYRICS · PLAYER INSPIRATION', 11, bold);
+	write((room.final_lyrics || room.lyrics).split('\n')[0], 26, bold);
 	const scaled = image.scaleToFit(210, 210);
 	page.drawImage(image, { x: 40, y: y - scaled.height, ...scaled });
 	y -= scaled.height + 25;

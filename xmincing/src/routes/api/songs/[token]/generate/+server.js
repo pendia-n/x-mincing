@@ -76,6 +76,7 @@ async function generate(env, room) {
 			});
 			const stream = await response.text();
 			let encoded = '';
+			let finalLyrics = '';
 			for (const line of stream.split('\n'))
 				if (line.startsWith('data: ')) {
 					const data = line.slice(6).trim();
@@ -83,12 +84,33 @@ async function generate(env, room) {
 					try {
 						const part = JSON.parse(data);
 						if (part.error) throw Error('Audio generation failed');
-						encoded += part.choices?.[0]?.delta?.audio?.data ?? '';
+						const delta = part.choices?.[0]?.delta;
+						encoded += delta?.audio?.data ?? '';
+						finalLyrics += delta?.audio?.transcript ?? '';
 					} catch (e) {
 						if (e.message === 'Audio generation failed') throw e;
 					}
 				}
 			if (!encoded) throw Error('Music provider returned no audio.');
+			if (room.host_variations && !finalLyrics.trim()) {
+				throw Error(
+					'The music provider returned audio without lyric text. Retry generation to receive the final lyrics and PDF.'
+				);
+			}
+			if (room.host_variations) {
+				room.final_lyrics = finalLyrics.trim();
+				room.lyric_credits = JSON.stringify(
+					await attributeFinalLyrics(
+						env,
+						room.final_lyrics,
+						room.host_answers,
+						room.host_variations
+					)
+				);
+				await env.DB.prepare('UPDATE song_rooms SET final_lyrics=?, lyric_credits=? WHERE id=?')
+					.bind(room.final_lyrics, room.lyric_credits, room.id)
+					.run();
+			}
 			await env.MEDIA.put(`songs/${room.id}/audio.mp3`, decode64(encoded), {
 				httpMetadata: { contentType: 'audio/mpeg' }
 			});
@@ -117,7 +139,7 @@ async function generate(env, room) {
 			new Uint8Array(await audio.arrayBuffer()),
 			image,
 			mime,
-			room.lyrics.split('\n')[0]
+			(room.final_lyrics || room.lyrics).split('\n')[0]
 		);
 		const key = `songs/${room.id}/finished.mp3`;
 		await env.MEDIA.put(key, song, { httpMetadata: { contentType: 'audio/mpeg' } });
@@ -128,7 +150,7 @@ async function generate(env, room) {
 			});
 		}
 		await env.DB.prepare(
-			"UPDATE song_rooms SET generation_status='complete', song_key=?, image_key=?, status='complete', ready_at=unixepoch() WHERE id=?"
+			"UPDATE song_rooms SET generation_status='complete', lyrics=COALESCE(final_lyrics, lyrics), song_key=?, image_key=?, status='complete', ready_at=unixepoch() WHERE id=?"
 		)
 			.bind(key, `songs/${room.id}/cover`, room.id)
 			.run();
@@ -144,4 +166,54 @@ async function generate(env, room) {
 			{ status: 502 }
 		);
 	}
+}
+
+async function attributeFinalLyrics(env, finalLyrics, hostAnswers, hostVariations) {
+	const players = JSON.parse(hostAnswers).map((answer, index) => ({
+		player: index + 1,
+		name: answer.name,
+		answer: answer.answer,
+		variation: JSON.parse(hostVariations)[index]
+	}));
+	const lines = finalLyrics
+		.split(/\r?\n/)
+		.map((text, index) => ({ index, text }))
+		.filter((line) => line.text.trim());
+	const response = await openRouter(env, 'chat/completions', {
+		model: 'inclusionai/ling-3.0-tiny',
+		response_format: { type: 'json_object' },
+		messages: [
+			{
+				role: 'system',
+				content:
+					'Attribute each supplied final lyric line to the player answers that inspired it. The lyric lines are fixed text from the music model. Do not rewrite, omit, reorder, or add words to any lyric. Return JSON with lines, an array containing one object per input line with the same index and exact same text and a players array of 1-based player numbers. Use an empty players array when no answer clearly inspired that line. Multiple players may inspire one line.'
+			},
+			{
+				role: 'user',
+				content: JSON.stringify({ players, lines })
+			}
+		]
+	});
+	const output = await response.json();
+	const credited = new Map(
+		(output.choices?.[0]?.message?.content
+			? JSON.parse(output.choices[0].message.content).lines
+			: []
+		).map((line) => [line.index, line])
+	);
+	return lines.map((line) => {
+		const attribution = credited.get(line.index);
+		return {
+			text: line.text.trim(),
+			players: Array.isArray(attribution?.players)
+				? [
+						...new Set(
+							attribution.players.filter(
+								(player) => Number.isInteger(player) && player >= 1 && player <= players.length
+							)
+						)
+					]
+				: []
+		};
+	});
 }
