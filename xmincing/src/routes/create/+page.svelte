@@ -1,4 +1,5 @@
 <script>
+	import { onMount } from 'svelte';
 	export let data;
 	let occasion = 'birthday';
 	let recipient = '';
@@ -6,8 +7,17 @@
 	let capacity = 2;
 	let busy = false;
 	let message = '';
-	let hostUrl = '';
-	let inviteUrl = '';
+	let variationCount = 2;
+	let customVariationCount = false;
+	let resume = '';
+	onMount(() => {
+		try {
+			const previous = localStorage.getItem('xmincing:last-host') || '';
+			if (/^\/host\/[A-Za-z0-9_-]{43}$/.test(previous)) resume = previous;
+		} catch {
+			/* Starting a new song still works. */
+		}
+	});
 	async function create() {
 		busy = true;
 		message = '';
@@ -15,12 +25,17 @@
 			const response = await fetch('/api/songs', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ occasion, recipient, mood, capacity: Number(capacity) })
+				body: JSON.stringify({
+					occasion,
+					recipient,
+					mood,
+					capacity: Number(capacity),
+					variationCount: Math.min(variationCount, capacity)
+				})
 			});
 			const data = await response.json();
 			if (!response.ok) throw new Error(data.message || 'Could not create the room.');
-			hostUrl = data.hostUrl;
-			inviteUrl = data.inviteUrl;
+			window.location.assign(data.hostUrl);
 		} catch (error) {
 			message = error.message;
 		} finally {
@@ -33,36 +48,46 @@
 <section>
 	<p class="label">MAKE IT TOGETHER</p>
 	<h1>Start your song.</h1>
-	{#if hostUrl}<p>Save your private host link. Share the invitation with your group.</p>
-		<label>Host link<input readonly value={hostUrl} /></label><label
-			>Invitation link<input readonly value={inviteUrl} /></label
-		><a class="button" href={hostUrl}>Open your room</a>
-	{:else}<form
-			onsubmit={(event) => {
-				event.preventDefault();
-				create();
-			}}
+	{#if resume}<p><a href={resume}>Return to your last song</a></p>{/if}
+	<form
+		onsubmit={(event) => {
+			event.preventDefault();
+			create();
+		}}
+	>
+		<label
+			>Occasion<select bind:value={occasion}
+				>{#each Object.entries(data.groups) as [category, occasions]}<optgroup label={category}
+						>{#each occasions as option (option.id)}<option value={option.id}>{option.label}</option
+							>{/each}</optgroup
+					>{/each}</select
+			></label
+		><label>Who is it for?<input bind:value={recipient} maxlength="80" required /></label><label
+			>Mood<select bind:value={mood}
+				>{#each data.moods as option (option.id)}<option value={option.id}>{option.label}</option
+					>{/each}</select
+			></label
+		><label
+			>People, including you<select
+				bind:value={capacity}
+				onchange={(event) => {
+					const size = Number(event.currentTarget.value);
+					variationCount = customVariationCount ? Math.min(variationCount, size) : size;
+				}}
+				>{#each [2, 3, 4, 5, 6, 7, 8] as count}<option value={count}>{count}</option>{/each}</select
+			></label
 		>
-			<label
-				>Occasion<select bind:value={occasion}
-					>{#each Object.entries(data.groups) as [category, occasions]}<optgroup label={category}
-							>{#each occasions as option (option.id)}<option value={option.id}
-									>{option.label}</option
-								>{/each}</optgroup
-						>{/each}</select
-				></label
-			><label>Who is it for?<input bind:value={recipient} maxlength="80" required /></label><label
-				>Mood<select bind:value={mood}
-					>{#each data.moods as option (option.id)}<option value={option.id}>{option.label}</option
-						>{/each}</select
-				></label
-			><label
-				>People, including you<select bind:value={capacity}
-					>{#each [2, 3, 4, 5, 6, 7, 8] as count}<option value={count}>{count}</option
-						>{/each}</select
-				></label
-			><button class="button" disabled={busy}>{busy ? 'Creating…' : 'Create room'}</button>
-		</form>{/if}{#if message}<p role="alert">{message}</p>{/if}
+		<label
+			>Different variations
+			<select bind:value={variationCount} onchange={() => (customVariationCount = true)}>
+				{#each Array.from({ length: capacity }, (_, index) => index + 1) as count}
+					<option value={count}>{count}</option>
+				{/each}
+			</select>
+			<small>Choose fewer variations to give some players the same prompt.</small>
+		</label><button class="button" disabled={busy}>{busy ? 'Creating…' : 'Prepare prompts'}</button>
+	</form>
+	{#if message}<p role="alert">{message}</p>{/if}
 </section>
 
 <style>

@@ -19,7 +19,7 @@ export default {
     const now = Math.floor(Date.now() / 1000);
     const expiredSongs = await env.DB.prepare('SELECT id FROM song_rooms WHERE expires_at <= ?').bind(now).all();
     for (const song of expiredSongs.results ?? []) {
-      for (const suffix of ['audio.mp3', 'cover', 'finished.mp3']) await env.MEDIA.delete('songs/' + song.id + '/' + suffix);
+      for (const suffix of ['audio.mp3', 'cover', 'finished.mp3', 'lyrics.pdf']) await env.MEDIA.delete('songs/' + song.id + '/' + suffix);
       await env.DB.prepare('DELETE FROM song_contributions WHERE room_id = ?').bind(song.id).run();
       await env.DB.prepare('DELETE FROM song_rooms WHERE id = ?').bind(song.id).run();
     }

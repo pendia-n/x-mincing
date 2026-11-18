@@ -1,4 +1,4 @@
-import { JWT_SECRET } from '$app/env/private';
+import { env } from 'cloudflare:workers';
 
 export const SESSION_COOKIE = 'xmincing_session';
 export const SESSION_SECONDS = 65 * 24 * 60 * 60;
@@ -27,7 +27,9 @@ export async function sha256(value) {
 }
 
 export async function hashSecret(value, salt = randomToken(16)) {
-	const key = await crypto.subtle.importKey('raw', encoder.encode(value), 'PBKDF2', false, ['deriveBits']);
+	const key = await crypto.subtle.importKey('raw', encoder.encode(value), 'PBKDF2', false, [
+		'deriveBits'
+	]);
 	const bits = await crypto.subtle.deriveBits(
 		{ name: 'PBKDF2', hash: 'SHA-256', salt: fromBase64Url(salt), iterations: ITERATIONS },
 		key,
@@ -37,7 +39,9 @@ export async function hashSecret(value, salt = randomToken(16)) {
 }
 
 export async function verifySecret(value, salt, expectedHash, iterations = ITERATIONS) {
-	const key = await crypto.subtle.importKey('raw', encoder.encode(value), 'PBKDF2', false, ['deriveBits']);
+	const key = await crypto.subtle.importKey('raw', encoder.encode(value), 'PBKDF2', false, [
+		'deriveBits'
+	]);
 	const bits = await crypto.subtle.deriveBits(
 		{ name: 'PBKDF2', hash: 'SHA-256', salt: fromBase64Url(salt), iterations },
 		key,
@@ -53,13 +57,20 @@ export async function verifySecret(value, salt, expectedHash, iterations = ITERA
 }
 
 function getJwtSecret(event) {
-	const secret = event.platform?.env?.JWT_SECRET ?? JWT_SECRET ?? globalThis.process?.env?.JWT_SECRET;
-	if (!secret || secret.length < 32) throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+	const secret = event.platform?.env?.JWT_SECRET ?? env.JWT_SECRET;
+	if (!secret || secret.length < 32)
+		throw new Error('JWT_SECRET must be configured with at least 32 characters.');
 	return secret;
 }
 
 async function hmacKey(secret, usages) {
-	return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, usages);
+	return crypto.subtle.importKey(
+		'raw',
+		encoder.encode(secret),
+		{ name: 'HMAC', hash: 'SHA-256' },
+		false,
+		usages
+	);
 }
 
 export async function signSession(event, userId) {
@@ -68,7 +79,11 @@ export async function signSession(event, userId) {
 	const header = toBase64Url(encoder.encode(JSON.stringify({ alg: 'HS256', typ: 'JWT' })));
 	const body = toBase64Url(encoder.encode(JSON.stringify(claims)));
 	const signingInput = `${header}.${body}`;
-	const signature = await crypto.subtle.sign('HMAC', await hmacKey(getJwtSecret(event), ['sign']), encoder.encode(signingInput));
+	const signature = await crypto.subtle.sign(
+		'HMAC',
+		await hmacKey(getJwtSecret(event), ['sign']),
+		encoder.encode(signingInput)
+	);
 	return { token: `${signingInput}.${toBase64Url(new Uint8Array(signature))}`, claims };
 }
 
@@ -87,7 +102,13 @@ export async function verifySessionToken(event, token) {
 		);
 		if (!valid) return null;
 		const claims = JSON.parse(new TextDecoder().decode(fromBase64Url(bodyPart)));
-		if (!claims.sub || !claims.jti || !Number.isFinite(claims.exp) || claims.exp <= Date.now() / 1000) return null;
+		if (
+			!claims.sub ||
+			!claims.jti ||
+			!Number.isFinite(claims.exp) ||
+			claims.exp <= Date.now() / 1000
+		)
+			return null;
 		return claims;
 	} catch {
 		return null;
